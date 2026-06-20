@@ -27,7 +27,25 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Decode CV PDF from secret
-        run: echo "${{ secrets.CV_PDF_BASE64 }}" | base64 -d > cv.pdf
+        run: |
+          if [ -z "${{ secrets.CV_PDF_BASE64 }}" ]; then
+            echo "ERROR: CV_PDF_BASE64 secret is not set!"
+            exit 1
+          fi
+          echo "${{ secrets.CV_PDF_BASE64 }}" | base64 -d > cv.pdf
+          echo "CV decoded. Size: $(wc -c < cv.pdf) bytes"
+          if [ ! -s cv.pdf ]; then
+            echo "ERROR: cv.pdf is empty after decode!"
+            exit 1
+          fi
+
+      - name: Check required secrets
+        run: |
+          [ -z "${{ secrets.ADZUNA_APP_ID }}" ] && echo "MISSING: ADZUNA_APP_ID" || echo "OK: ADZUNA_APP_ID"
+          [ -z "${{ secrets.ADZUNA_APP_KEY }}" ] && echo "MISSING: ADZUNA_APP_KEY" || echo "OK: ADZUNA_APP_KEY"
+          [ -z "${{ secrets.OPENROUTER_API_KEY }}" ] && echo "MISSING: OPENROUTER_API_KEY" || echo "OK: OPENROUTER_API_KEY"
+          [ -z "${{ secrets.NTFY_TOPIC }}" ] && echo "MISSING: NTFY_TOPIC" || echo "OK: NTFY_TOPIC"
+          echo "(missing required ones will cause the run to fail)"
 
       - name: Run KYC Job Finder
         continue-on-error: true
