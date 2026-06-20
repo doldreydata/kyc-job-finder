@@ -43,7 +43,7 @@ ADZUNA_APP_KEY: str = os.environ["ADZUNA_APP_KEY"]
 OPENROUTER_API_KEY: str = os.environ["OPENROUTER_API_KEY"]
 
 # --- OpenRouter ---
-OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL") or "deepseek/deepseek-v4-flash"
 
 # --- SMTP (optional — if SMTP_PASS is not set, results print to console) ---
 # For ProtonMail: SMTP_HOST=smtp.protonmail.ch, SMTP_PORT=587
@@ -60,18 +60,18 @@ NTFY_TOPIC: str = os.getenv("NTFY_TOPIC", "")
 # --- Search ---
 SEARCH_QUERIES: List[str] = [
     q.strip()
-    for q in os.getenv(
-        "SEARCH_QUERIES",
-        "KYC analyst, AML analyst, financial crime analyst, customer due diligence, KYC onboarding",
+    for q in (
+        os.getenv("SEARCH_QUERIES")
+        or "KYC analyst, AML analyst, financial crime analyst, customer due diligence, KYC onboarding"
     ).split(",")
     if q.strip()
 ]
 
-LOCATION: str = os.getenv("LOCATION", "United Kingdom")
+LOCATION: str = os.getenv("LOCATION") or "United Kingdom"
 
 # --- Scoring ---
-MIN_SCORE: int = int(os.getenv("MIN_SCORE", "70"))
-MAX_JOBS_PER_RUN: int = int(os.getenv("MAX_JOBS_PER_RUN", "40"))
+MIN_SCORE: int = int(os.getenv("MIN_SCORE") or "70")
+MAX_JOBS_PER_RUN: int = int(os.getenv("MAX_JOBS_PER_RUN") or "40")
 
 # --- CV ---
-CV_PATH: str = os.getenv("CV_PATH", "cv.pdf")
+CV_PATH: str = os.getenv("CV_PATH") or "cv.pdf"
