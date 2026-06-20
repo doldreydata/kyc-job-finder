@@ -1,9 +1,12 @@
 """
-jobs.py — Fetch KYC/AML job postings from the JSearch API (via RapidAPI).
+jobs.py — Fetch KYC/AML job postings from the Adzuna API (free tier).
 
-For each search query in `SEARCH_QUERIES`, calls the JSearch endpoint,
+For each search query in `SEARCH_QUERIES`, calls the Adzuna search endpoint,
 normalises the results into a standard dict shape, and returns a merged,
 within-run-deduplicated list.
+
+Adzuna free tier: 1,000 API calls/month — enough for daily runs.
+Sign up at https://developer.adzuna.com/signup
 """
 
 from __future__ import annotations
@@ -14,55 +17,48 @@ from typing import Any, Dict, List
 
 import httpx
 
-from config import JSEARCH_API_KEY, LOCATION, SEARCH_QUERIES
+from config import ADZUNA_APP_ID, ADZUNA_APP_KEY, LOCATION, SEARCH_QUERIES
 
 logger = logging.getLogger(__name__)
 
-JSEARCH_URL = "https://jsearch.p.rapidapi.com/search"
-HEADERS = {
-    "x-rapidapi-key": JSEARCH_API_KEY,
-    "x-rapidapi-host": "jsearch.p.rapidapi.com",
-}
+ADZUNA_URL = "https://api.adzuna.com/v1/api/jobs/gb/search/1"
 MAX_RETRIES = 3
 RETRY_BACKOFF = 2  # seconds
 
 
 def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert a raw JSearch result dict into our standard job dict."""
-    description = raw.get("job_description") or ""
+    """Convert a raw Adzuna result dict into our standard job dict."""
+    description = raw.get("description") or ""
+    company = raw.get("company") or {}
+    location = raw.get("location") or {}
     return {
-        "job_id": raw.get("job_id", ""),
-        "title": raw.get("job_title", ""),
-        "company": raw.get("employer_name", ""),
-        "location": ", ".join(
-            filter(
-                None,
-                [
-                    raw.get("job_city"),
-                    raw.get("job_state"),
-                    raw.get("job_country"),
-                ],
-            )
-        ),
+        "job_id": raw.get("id", ""),
+        "title": raw.get("title", ""),
+        "company": company.get("display_name", ""),
+        "location": location.get("display_name", ""),
         "description": description[:6000],  # truncate for LLM
-        "apply_link": raw.get("job_apply_link", ""),
-        "posted": raw.get("job_posted_at_datetime_utc", ""),
-        "source": raw.get("job_publisher", ""),
+        "apply_link": raw.get("redirect_url", ""),
+        "posted": raw.get("created", ""),
+        "source": "Adzuna",
     }
 
 
 def _fetch_query(client: httpx.Client, query: str) -> List[Dict[str, Any]]:
     """Fetch jobs for a single search query, with retry/back-off on failure."""
     params: Dict[str, Any] = {
-        "query": f"{query} in {LOCATION}",
-        "page": 1,
-        "num_pages": 1,
-        "date_posted": "week",
+        "app_id": ADZUNA_APP_ID,
+        "app_key": ADZUNA_APP_KEY,
+        "what": query,
+        "where": LOCATION,
+        "results_per_page": 50,
+        "sort_by": "date",
+        "content-type": "application/json",
+        "max_days_old": 7,
     }
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            resp = client.get(JSEARCH_URL, headers=HEADERS, params=params)
+            resp = client.get(ADZUNA_URL, params=params, timeout=30)
             if resp.status_code == 429:
                 wait = RETRY_BACKOFF * attempt
                 logger.warning(
@@ -76,7 +72,7 @@ def _fetch_query(client: httpx.Client, query: str) -> List[Dict[str, Any]]:
                 continue
             resp.raise_for_status()
             data = resp.json()
-            raw_jobs: List[Dict[str, Any]] = data.get("data", [])
+            raw_jobs: List[Dict[str, Any]] = data.get("results", [])
             logger.info("Query '%s' returned %d job(s)", query, len(raw_jobs))
             return [_normalise(j) for j in raw_jobs]
         except httpx.HTTPError as exc:

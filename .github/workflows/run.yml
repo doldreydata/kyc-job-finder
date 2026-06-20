@@ -27,7 +27,8 @@ jobs:
 
       - name: Run KYC Job Finder
         env:
-          JSEARCH_API_KEY: ${{ secrets.JSEARCH_API_KEY }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}

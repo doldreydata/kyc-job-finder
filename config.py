@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _REQUIRED_KEYS: List[str] = [
-    "JSEARCH_API_KEY",
+    "ADZUNA_APP_ID",
+    "ADZUNA_APP_KEY",
     "OPENROUTER_API_KEY",
 ]
 
@@ -28,7 +29,7 @@ def _validate() -> None:
     if missing:
         print(
             f"ERROR: Missing required environment variable(s): {', '.join(missing)}. "
-            "Set them in a .env file or export them directly.",
+            "Sign up for a free Adzuna API key at https://developer.adzuna.com/signup",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -37,7 +38,8 @@ def _validate() -> None:
 _validate()
 
 # --- API keys ---
-JSEARCH_API_KEY: str = os.environ["JSEARCH_API_KEY"]
+ADZUNA_APP_ID: str = os.environ["ADZUNA_APP_ID"]
+ADZUNA_APP_KEY: str = os.environ["ADZUNA_APP_KEY"]
 OPENROUTER_API_KEY: str = os.environ["OPENROUTER_API_KEY"]
 
 # --- OpenRouter ---
