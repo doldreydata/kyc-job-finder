@@ -22,7 +22,7 @@ from config import ADZUNA_APP_ID, ADZUNA_APP_KEY, LOCATION, SEARCH_QUERIES
 
 logger = logging.getLogger(__name__)
 
-ADZUNA_URL = "https://api.adzuna.com/v1/api/jobs/gb/search/1"
+ADZUNA_URL = "https://api.adzuna.com/v1/api/jobs/gb/search"
 MAX_RETRIES = 3
 RETRY_BACKOFF = 2  # seconds
 
@@ -48,53 +48,61 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _fetch_query(client: httpx.Client, query: str) -> List[Dict[str, Any]]:
-    """Fetch jobs for a single search query, with retry/back-off on failure."""
-    params: Dict[str, Any] = {
-        "app_id": ADZUNA_APP_ID,
-        "app_key": ADZUNA_APP_KEY,
-        "what": query,
-        "results_per_page": 50,
-        "sort_by": "date",
-        "content-type": "application/json",
-        "max_days_old": 14,
-    }
+    """Fetch ALL jobs for a single search query across multiple pages, with retry/back-off on failure."""
+    all_jobs: List[Dict[str, Any]] = []
+    page = 1
+    max_pages = 10  # safety limit — 10 pages × 50 results = 500 jobs per query
 
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            resp = client.get(ADZUNA_URL, params=params, timeout=30)
-            if resp.status_code == 429:
-                wait = RETRY_BACKOFF * attempt
-                logger.warning(
-                    "Rate-limited on query '%s' (attempt %d/%d), waiting %ds…",
-                    query,
-                    attempt,
-                    MAX_RETRIES,
-                    wait,
+    while page <= max_pages:
+        params: Dict[str, Any] = {
+            "app_id": ADZUNA_APP_ID,
+            "app_key": ADZUNA_APP_KEY,
+            "what": query,
+            "results_per_page": 50,
+            "sort_by": "date",
+            "content-type": "application/json",
+            "max_days_old": 14,
+        }
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                resp = client.get(
+                    f"{ADZUNA_URL}/{page}", params=params, timeout=30
                 )
-                time.sleep(wait)
-                continue
-            resp.raise_for_status()
-            data = resp.json()
-            raw_jobs: List[Dict[str, Any]] = data.get("results", [])
-            logger.info("Query '%s' returned %d job(s)", query, len(raw_jobs))
-            return [_normalise(j) for j in raw_jobs]
-        except httpx.HTTPError as exc:
-            logger.error(
-                "HTTP error on query '%s' (attempt %d/%d): %s",
-                query,
-                attempt,
-                MAX_RETRIES,
-                exc,
-            )
-            if attempt < MAX_RETRIES:
-                time.sleep(RETRY_BACKOFF * attempt)
-            else:
-                logger.exception("Exhausted retries for query '%s'", query)
-        except Exception:
-            logger.exception("Unexpected error on query '%s'", query)
-            break
+                if resp.status_code == 429:
+                    wait = RETRY_BACKOFF * attempt
+                    logger.warning(
+                        "Rate-limited on query '%s' page %d (attempt %d/%d), waiting %ds…",
+                        query, page, attempt, MAX_RETRIES, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                raw_jobs: List[Dict[str, Any]] = data.get("results", [])
+                if not raw_jobs:
+                    logger.info("Query '%s' page %d: no more results", query, page)
+                    return all_jobs
+                logger.info("Query '%s' page %d: %d job(s)", query, page, len(raw_jobs))
+                all_jobs.extend(_normalise(j) for j in raw_jobs)
+                page += 1
+                time.sleep(0.5)  # be nice to the API
+                break  # success, move to next page
+            except httpx.HTTPError as exc:
+                logger.error(
+                    "HTTP error on query '%s' page %d (attempt %d/%d): %s",
+                    query, page, attempt, MAX_RETRIES, exc,
+                )
+                if attempt < MAX_RETRIES:
+                    time.sleep(RETRY_BACKOFF * attempt)
+                else:
+                    logger.exception("Exhausted retries for query '%s' page %d", query, page)
+                    return all_jobs
+            except Exception:
+                logger.exception("Unexpected error on query '%s' page %d", query, page)
+                return all_jobs
 
-    return []
+    return all_jobs
 
 
 def fetch_all_jobs() -> List[Dict[str, Any]]:

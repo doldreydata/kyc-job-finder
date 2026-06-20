@@ -17,7 +17,7 @@ import logging
 import sys
 from typing import Any, Dict, List
 
-from config import MAX_JOBS_PER_RUN, MIN_SCORE, NTFY_TOPIC, SMTP_PASS
+from config import MIN_SCORE, NTFY_TOPIC, SMTP_PASS
 from cv import load_cv
 from jobs import fetch_all_jobs
 from mailer import send_matches
@@ -88,14 +88,12 @@ def main() -> None:
     all_jobs = fetch_all_jobs()
     fetched_count = len(all_jobs)
 
-    # 3. Drop seen + cap
+    # 3. Drop seen — rate ALL new jobs (no cap)
     new_jobs = _filter_new(all_jobs)
-    capped_jobs = new_jobs[:MAX_JOBS_PER_RUN]
-    if len(new_jobs) > MAX_JOBS_PER_RUN:
-        logger.info("Capped from %d to %d jobs for rating", len(new_jobs), MAX_JOBS_PER_RUN)
+    logger.info("Rating %d new job(s) against your CV...", len(new_jobs))
 
-    # 4. Rate
-    rated = _rate_all(cv_text, capped_jobs)
+    # 4. Rate ALL new jobs
+    rated = _rate_all(cv_text, new_jobs)
 
     # 5. Filter by MIN_SCORE, sort descending
     matches = [r for r in rated if r["rating"]["score"] >= MIN_SCORE]
@@ -112,8 +110,8 @@ def main() -> None:
     else:
         logger.info("No jobs met the minimum score of %d", MIN_SCORE)
 
-    # 7. Mark ALL processed as seen (regardless of score)
-    processed_ids = [j["job_id"] for j in capped_jobs]
+    # 7. Mark ALL new jobs as seen (regardless of score)
+    processed_ids = [j["job_id"] for j in new_jobs]
     mark_seen(processed_ids)
 
     # 8. Summary
