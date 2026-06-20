@@ -9,14 +9,18 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore seen.db cache
+        uses: actions/cache@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          path: seen.db
+          key: seen-db-${{ github.run_id }}
+          restore-keys: |
+            seen-db-
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -48,7 +52,6 @@ jobs:
           echo "(missing required ones will cause the run to fail)"
 
       - name: Run KYC Job Finder
-        continue-on-error: true
         env:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
@@ -66,11 +69,4 @@ jobs:
           MAX_JOBS_PER_RUN: ${{ secrets.MAX_JOBS_PER_RUN }}
         run: python main.py
 
-      - name: Commit updated seen.db back to repo
-        continue-on-error: true
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add seen.db
-          git diff --staged --quiet || (git commit -m "chore: update seen.db [skip ci]" && git push)
+      # seen.db is automatically saved by actions/cache at the end of the job
