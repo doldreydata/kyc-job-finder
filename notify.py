@@ -50,7 +50,7 @@ def send_notification(matches: List[Dict[str, Any]]) -> None:
     if not matches:
         return
 
-    title = f"🔍 {len(matches)} new KYC match{'es' if len(matches) != 1 else ''}"
+title = f"{len(matches)} new KYC match{'es' if len(matches) != 1 else ''}"
     body = _build_message(matches)
 
     # Click action: open the top match's apply link
@@ -64,7 +64,7 @@ def send_notification(matches: List[Dict[str, Any]]) -> None:
                 headers={
                     "Title": title,
                     "Priority": "default",
-                    "Tags": "briefcase,memo",
+                    "Tags": "briefcase",
                     "Click": click_url,
                 },
             )

@@ -49,11 +49,10 @@ def _fetch_query(client: httpx.Client, query: str) -> List[Dict[str, Any]]:
         "app_id": ADZUNA_APP_ID,
         "app_key": ADZUNA_APP_KEY,
         "what": query,
-        "where": LOCATION,
         "results_per_page": 50,
         "sort_by": "date",
         "content-type": "application/json",
-        "max_days_old": 7,
+        "max_days_old": 14,
     }
 
     for attempt in range(1, MAX_RETRIES + 1):
