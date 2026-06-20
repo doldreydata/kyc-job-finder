@@ -30,7 +30,10 @@ def _build_message(matches: List[Dict[str, Any]]) -> str:
             f"{i}. [{r['score']}/100] {job['title']} — {job['company']}"
         )
         lines.append(f"   {r['reason']}")
-        lines.append(f"   🔗 {job['apply_link']}")
+        lines.append(f"   Apply: {job['apply_link']}")
+        search_link = job.get("search_link", "")
+        if search_link:
+            lines.append(f"   Search: {search_link}")
         lines.append("")
     if len(matches) > 5:
         lines.append(f"... and {len(matches) - 5} more matches")
@@ -53,8 +56,9 @@ def send_notification(matches: List[Dict[str, Any]]) -> None:
 title = f"{len(matches)} new KYC match{'es' if len(matches) != 1 else ''}"
     body = _build_message(matches)
 
-    # Click action: open the top match's apply link
-    click_url = matches[0]["job"]["apply_link"]
+    # Click action: open a Google search for the job title + company
+    top_job = matches[0]["job"]
+    click_url = top_job.get("search_link") or top_job["apply_link"]
 
     try:
         with httpx.Client(timeout=15) as client:

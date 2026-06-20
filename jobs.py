@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any, Dict, List
+from urllib.parse import quote
 
 import httpx
 
@@ -30,14 +31,17 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
     """Convert a raw Adzuna result dict into our standard job dict."""
     description = raw.get("description") or ""
     company = raw.get("company") or {}
-    location = raw.get("location") or {}
+    location_dict = raw.get("location") or {}
+    title = raw.get("title", "")
+    company_name = company.get("display_name", "")
     return {
         "job_id": raw.get("id", ""),
-        "title": raw.get("title", ""),
-        "company": company.get("display_name", ""),
-        "location": location.get("display_name", ""),
+        "title": title,
+        "company": company_name,
+        "location": location_dict.get("display_name", ""),
         "description": description[:6000],  # truncate for LLM
         "apply_link": raw.get("redirect_url", ""),
+        "search_link": f"https://www.google.com/search?q={quote(title + ' ' + company_name + ' apply')}",
         "posted": raw.get("created", ""),
         "source": "Adzuna",
     }

@@ -62,6 +62,11 @@ def _build_html(matches: List[Dict[str, Any]]) -> str:
               {job['location']} &middot; {job.get('source', '')}
             </div>
             <p style="margin:8px 0 4px;color:#333;">{rating['reason']}</p>
+            <div style="font-size:13px;margin:8px 0;">
+              <a href="{job['apply_link']}" style="color:#1565c0;">Apply on Adzuna</a>
+              &middot;
+              <a href="{job.get('search_link', '#')}" style="color:#34a853;">Search Google</a>
+            </div>
             <div style="font-size:13px;margin-top:8px;">
               <strong style="color:#2e7d32;">✓ Matches:</strong>
               <ul style="margin:2px 0 8px;padding-left:20px;">{key_matches_html}</ul>
@@ -107,6 +112,9 @@ def _build_plain(matches: List[Dict[str, Any]]) -> str:
         )
         lines.append(f"   {job['location']} | {job.get('source', '')}")
         lines.append(f"   Apply: {job['apply_link']}")
+        search_link = job.get("search_link", "")
+        if search_link:
+            lines.append(f"   Search: {search_link}")
         lines.append(f"   {rating['reason']}")
         lines.append(f"   Matches: {', '.join(rating.get('key_matches', []))}")
         lines.append(f"   Gaps: {', '.join(rating.get('gaps', []))}")

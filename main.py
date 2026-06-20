@@ -143,6 +143,8 @@ def _print_matches(matches: List[Dict[str, Any]]) -> None:
         print(f"     ✅ Matches: {', '.join(r.get('key_matches', []))}")
         if r.get("gaps"):
             print(f"     ⚠️  Gaps: {', '.join(r['gaps'])}")
+        search_link = job.get("search_link", "")
+        print(f"     🔍 Search: {search_link}")
         print(f"     🔗 Apply: {job['apply_link']}")
         print()
 
